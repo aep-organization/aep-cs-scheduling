@@ -212,12 +212,11 @@
     var email = getEmailFromUrl();
 
     // Modo demonstração: mostra o layout sem chamar o n8n.
+    // Enquanto a lógica de correspondência por e-mail não está no n8n, sempre
+    // mostramos a lista completa — mesmo quando há e-mail na URL (não simulamos
+    // um "match" de uma única pessoa).
     if (isDemoMode()) {
-      if (email) {
-        renderFound(DEMO.slice(0, 1));
-      } else {
-        renderNotFound(DEMO);
-      }
+      renderNotFound(DEMO);
       return;
     }
 
