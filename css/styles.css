@@ -1,8 +1,3 @@
-/* ==========================================================================
-   Setor de Relacionamento AEP — estilos
-   Marca AEP: azul-marinho #16375c (título/logo) · teal #15a3b5 (botões)
-   ========================================================================== */
-
 :root {
   --navy: #16375c;
   --teal: #15a3b5;
@@ -35,13 +30,10 @@ body {
   justify-content: center;
   padding: 24px;
 
-  /* Fundo com foto (assets/duas-mulheres-conversando.jpeg) + overlay escuro
-     em gradiente para manter contraste com o cartão branco.
-     Para voltar ao gradiente puro, comente a linha abaixo e descomente a seguinte. */
+  
   background:
     radial-gradient(1200px 800px at 50% -10%, rgba(36, 80, 126, 0.75) 0%, rgba(22, 55, 92, 0.85) 45%, rgba(12, 33, 54, 0.92) 100%),
     url("../assets/duas-mulheres-conversando.jpeg") center / cover no-repeat fixed;
-  /* background: radial-gradient(1200px 800px at 50% -10%, #24507e 0%, #16375c 45%, #0c2136 100%); */
 }
 
 /* Cartão branco central --------------------------------------------------- */

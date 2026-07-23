@@ -1,9 +1,3 @@
-/* ==========================================================================
-   Vercel Serverless Function — proxy do webhook de responsáveis (n8n)
-   A URL do webhook fica só aqui (env var no servidor), nunca no navegador.
-   Repassa email/cpf ao n8n e devolve a resposta como veio. Nunca loga PII.
-   ========================================================================== */
-
 const TIMEOUT_MS = 8000;
 
 module.exports = async function handler(req, res) {

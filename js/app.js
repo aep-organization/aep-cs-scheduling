@@ -1,16 +1,11 @@
-/* ==========================================================================
-   Setor de Relacionamento AEP — lógica do front-end
-   Lê email/cpf da URL, chama /api/responsavel (proxy do webhook n8n) e mostra
-   o owner designado (em destaque) e/ou a lista completa de owners ativos.
-   Sem dependências externas, sem localStorage, sem cookies, sem logar PII.
-   ========================================================================== */
+
 (function () {
   'use strict';
 
   var TIMEOUT_MS = 8000;
   var GROUP_THRESHOLD = 8;
-  var CARD_MIN_WIDTH = 170; // precisa bater com minmax() em .people no CSS
-  var GRID_GAP = 18; // precisa bater com gap em .people no CSS
+  var CARD_MIN_WIDTH = 170; 
+  var GRID_GAP = 18; 
 
   var content = document.getElementById('content');
 
@@ -28,8 +23,6 @@
     while (el.firstChild) el.removeChild(el.firstChild);
   }
 
-  // Agrupa por team preservando a ordem de primeira aparição. Owners sem
-  // team caem no grupo "Outros".
   function groupByTeam(owners) {
     var order = [];
     var groups = {};
@@ -46,17 +39,14 @@
     });
   }
 
-  // Distribui os cards em linhas parelhas em vez de deixar uma última linha
-  // "órfã" com poucos itens (ex.: 6 itens em vez de virar 5+1, vira 3+3).
-  // Precisa rodar com o grid já inserido no DOM (e visível) para medir a
-  // largura real disponível.
+  
   function balanceGridColumns(grid) {
     var n = grid.children.length;
     if (n < 2) return;
     var width = grid.getBoundingClientRect().width;
-    if (!width) return; // ainda não está visível (ex.: dentro de <details> fechado)
+    if (!width) return; 
     var maxCols = Math.max(1, Math.floor((width + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP)));
-    if (maxCols <= 1) return; // tela estreita: mantém 1 coluna (padrão do CSS)
+    if (maxCols <= 1) return; 
     var rows = Math.ceil(n / maxCols);
     var cols = Math.ceil(n / rows);
     grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(' + CARD_MIN_WIDTH + 'px, 1fr))';
