@@ -79,13 +79,6 @@
     name.textContent = owner.name || 'Sem nome';
     card.appendChild(name);
 
-    if (owner.team) {
-      var team = document.createElement('span');
-      team.className = 'owner-team';
-      team.textContent = owner.team;
-      card.appendChild(team);
-    }
-
     var buttonLabel = opts.highlight ? 'Agendar com ' + owner.name : 'Agendar';
 
     if (owner.calendar_link) {
