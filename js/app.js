@@ -1,49 +1,18 @@
 /* ==========================================================================
    Setor de Relacionamento AEP — lógica do front-end
-   Lê o e-mail da URL, chama o webhook do n8n e mostra o(s) CS responsável(is).
-   Sem dependências externas, sem localStorage, sem cookies.
+   Lê email/cpf da URL, chama /api/responsavel (proxy do webhook n8n) e mostra
+   o owner designado (em destaque) e/ou a lista completa de owners ativos.
+   Sem dependências externas, sem localStorage, sem cookies, sem logar PII.
    ========================================================================== */
 (function () {
   'use strict';
 
-  var CONFIG = window.APP_CONFIG || {};
-  var WEBHOOK_URL = CONFIG.WEBHOOK_URL || '';
-  var EMAIL_PARAM = CONFIG.EMAIL_PARAM || 'e-mail';
-  var PLACEHOLDER_URL = 'COLE_A_URL_DO_N8N_AQUI';
-  var TIMEOUT_MS = 10000;
+  var TIMEOUT_MS = 8000;
+  var GROUP_THRESHOLD = 8;
 
   var content = document.getElementById('content');
 
-  // Dados de exemplo usados no modo demonstração (enquanto o webhook não é ligado).
-  // As URLs de agendamento vêm de CONFIG.CALENDAR_LINKS (ver resolveUrl).
-  var DEMO = [
-    { nome: 'Evelyn Celestino' },
-    { nome: 'Luana' },
-    { nome: 'Agna Luiza' },
-    { nome: 'Christiam Santana' },
-    { nome: 'Gabriella' },
-    { nome: 'Mariany' }
-  ];
-
   // ---------- Utilidades ----------------------------------------------------
-
-  // URL do webhook para essa pessoa; se ausente, usa o link hardcoded em
-  // config.js (CALENDAR_LINKS), casando pelo nome.
-  function resolveUrl(pessoa) {
-    if (pessoa.url) return pessoa.url;
-    var links = CONFIG.CALENDAR_LINKS || {};
-    return links[pessoa.nome] || '';
-  }
-
-  function getEmailFromUrl() {
-    var params = new URLSearchParams(window.location.search);
-    var value = params.get(EMAIL_PARAM);
-    return value ? value.trim() : '';
-  }
-
-  function isDemoMode() {
-    return !WEBHOOK_URL || WEBHOOK_URL === PLACEHOLDER_URL;
-  }
 
   function initials(nome) {
     if (!nome) return '?';
@@ -57,6 +26,24 @@
     while (el.firstChild) el.removeChild(el.firstChild);
   }
 
+  // Agrupa por team preservando a ordem de primeira aparição. Owners sem
+  // team caem no grupo "Outros".
+  function groupByTeam(owners) {
+    var order = [];
+    var groups = {};
+    owners.forEach(function (owner) {
+      var key = owner.team || 'Outros';
+      if (!groups[key]) {
+        groups[key] = [];
+        order.push(key);
+      }
+      groups[key].push(owner);
+    });
+    return order.map(function (team) {
+      return { team: team, owners: groups[team] };
+    });
+  }
+
   // ---------- Renderização --------------------------------------------------
 
   function renderLoading() {
@@ -66,99 +53,121 @@
     var spin = document.createElement('div');
     spin.className = 'spinner';
     var msg = document.createElement('p');
-    msg.textContent = 'Buscando o seu CS responsável...';
+    msg.textContent = 'Buscando o responsável...';
     wrap.appendChild(spin);
     wrap.appendChild(msg);
     content.appendChild(wrap);
   }
 
-  function buildAvatar(pessoa) {
-    if (pessoa.foto) {
-      var img = document.createElement('img');
-      img.className = 'person__avatar';
-      img.src = pessoa.foto;
-      img.alt = pessoa.nome || '';
-      return img;
-    }
+  function buildAvatar(owner) {
     var div = document.createElement('div');
     div.className = 'person__avatar';
     div.setAttribute('aria-hidden', 'true');
-    div.textContent = initials(pessoa.nome);
+    div.textContent = initials(owner.name);
     return div;
   }
 
-  function buildCard(pessoa) {
+  function buildOwnerCard(owner, opts) {
+    opts = opts || {};
     var card = document.createElement('article');
-    card.className = 'person';
+    card.className = 'person' + (opts.highlight ? ' person--assigned' : '');
 
-    card.appendChild(buildAvatar(pessoa));
+    card.appendChild(buildAvatar(owner));
 
     var name = document.createElement('h2');
     name.className = 'person__name';
-    name.textContent = pessoa.nome || 'Sem nome';
+    name.textContent = owner.name || 'Sem nome';
     card.appendChild(name);
 
-    var url = resolveUrl(pessoa);
-    if (url) {
+    if (owner.team) {
+      var team = document.createElement('span');
+      team.className = 'owner-team';
+      team.textContent = owner.team;
+      card.appendChild(team);
+    }
+
+    var buttonLabel = opts.highlight ? 'Agendar com ' + owner.name : 'Agendar';
+
+    if (owner.calendar_link) {
       var link = document.createElement('a');
       link.className = 'btn';
-      link.href = url;
+      link.href = owner.calendar_link;
       link.target = '_blank';
-      link.rel = 'noopener';
-      link.textContent = 'Agendar';
+      link.rel = 'noopener noreferrer';
+      link.textContent = buttonLabel;
       card.appendChild(link);
     } else {
       var disabled = document.createElement('span');
       disabled.className = 'btn btn--disabled';
       disabled.setAttribute('aria-disabled', 'true');
-      disabled.textContent = 'Agendar';
+      disabled.textContent = buttonLabel;
       card.appendChild(disabled);
     }
 
     return card;
   }
 
-  function buildPeopleGrid(lista) {
+  function buildOwnersGrid(owners) {
     var grid = document.createElement('div');
     grid.className = 'people';
-    lista.forEach(function (pessoa) {
-      grid.appendChild(buildCard(pessoa));
+    owners.forEach(function (owner) {
+      grid.appendChild(buildOwnerCard(owner));
     });
     return grid;
   }
 
-  // status "found": só os cards recebidos.
-  function renderFound(lista) {
-    clear(content);
-    content.appendChild(buildPeopleGrid(lista));
+  // Lista de owners (grid simples, ou agrupada por team se passar do limite).
+  function buildOwnersList(owners) {
+    if (owners.length > GROUP_THRESHOLD) {
+      var wrap = document.createElement('div');
+      wrap.className = 'team-groups';
+      groupByTeam(owners).forEach(function (group) {
+        var section = document.createElement('div');
+        section.className = 'team-group';
+        var title = document.createElement('h3');
+        title.className = 'team-group__title';
+        title.textContent = group.team;
+        section.appendChild(title);
+        section.appendChild(buildOwnersGrid(group.owners));
+        wrap.appendChild(section);
+      });
+      return wrap;
+    }
+    return buildOwnersGrid(owners);
   }
 
-  // status "not_found" (ou sem e-mail): todos os responsáveis.
-  // Aviso "Não foi possível encontrar o seu CS responsável" desativado por
-  // enquanto, a pedido do time, até a lógica de correspondência por e-mail
-  // estar implementada no n8n. Reativar depois é só descomentar o bloco abaixo.
-  function renderNotFound(lista) {
+  // found: true — destaque do assigned_owner + demais owners recolhidos.
+  function renderAssigned(assignedOwner, owners) {
     clear(content);
+    content.appendChild(buildOwnerCard(assignedOwner, { highlight: true }));
 
-    // var notice = document.createElement('div');
-    // notice.className = 'notice';
-    // var t = document.createElement('p');
-    // t.className = 'notice__title';
-    // t.textContent = 'Não foi possível encontrar o seu CS responsável.';
-    // var s = document.createElement('p');
-    // s.className = 'notice__text';
-    // s.textContent = 'Sem problemas! Você pode agendar com qualquer um dos nossos responsáveis abaixo.';
-    // notice.appendChild(t);
-    // notice.appendChild(s);
-    // content.appendChild(notice);
+    var others = owners.filter(function (owner) {
+      return !owner.is_match;
+    });
 
-    if (lista && lista.length) {
-      content.appendChild(buildPeopleGrid(lista));
+    if (others.length) {
+      var details = document.createElement('details');
+      details.className = 'other-owners';
+      var summary = document.createElement('summary');
+      summary.textContent = 'Prefere outro horário? Ver outros responsáveis';
+      details.appendChild(summary);
+      details.appendChild(buildOwnersList(others));
+      content.appendChild(details);
     }
   }
 
+  // found: false (ou sem email/cpf na URL) — sem destaque, lista completa.
+  function renderAllOwners(owners) {
+    clear(content);
+    var msg = document.createElement('p');
+    msg.className = 'content-message';
+    msg.textContent = 'Escolha um responsável para agendar';
+    content.appendChild(msg);
+    content.appendChild(buildOwnersList(owners));
+  }
+
   // Estado de erro com botão "Tentar de novo".
-  function renderError() {
+  function renderError(retry) {
     clear(content);
     var wrap = document.createElement('div');
     wrap.className = 'state-error';
@@ -169,13 +178,13 @@
 
     var s = document.createElement('p');
     s.className = 'state-error__text';
-    s.textContent = 'Não conseguimos carregar os responsáveis. Verifique sua conexão e tente novamente.';
+    s.textContent = 'Não foi possível encontrar os dados. Tente novamente mais tarde.';
 
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn';
     btn.textContent = 'Tentar de novo';
-    btn.addEventListener('click', run);
+    btn.addEventListener('click', retry);
 
     wrap.appendChild(t);
     wrap.appendChild(s);
@@ -185,18 +194,18 @@
 
   // ---------- Rede ----------------------------------------------------------
 
-  function fetchResponsaveis(email) {
+  function fetchResponsavel(email, cpf) {
+    var params = new URLSearchParams();
+    if (email) params.set('email', email);
+    if (cpf) params.set('cpf', cpf);
+    var url = '/api/responsavel' + (params.toString() ? '?' + params.toString() : '');
+
     var controller = new AbortController();
     var timer = setTimeout(function () {
       controller.abort();
     }, TIMEOUT_MS);
 
-    return fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email }),
-      signal: controller.signal
-    })
+    return fetch(url, { signal: controller.signal })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
@@ -208,46 +217,44 @@
 
   // ---------- Fluxo principal ----------------------------------------------
 
-  function run() {
-    var email = getEmailFromUrl();
+  function init() {
+    var params = new URLSearchParams(window.location.search);
+    var email = (params.get('email') || '').trim();
+    var cpf = (params.get('cpf') || '').trim();
+    var urlCleaned = false;
 
-    // Modo demonstração: mostra o layout sem chamar o n8n.
-    // Enquanto a lógica de correspondência por e-mail não está no n8n, sempre
-    // mostramos a lista completa — mesmo quando há e-mail na URL (não simulamos
-    // um "match" de uma única pessoa).
-    if (isDemoMode()) {
-      renderNotFound(DEMO);
-      return;
+    function cleanUrl() {
+      if (urlCleaned) return;
+      urlCleaned = true;
+      if (window.location.search) {
+        history.replaceState(null, '', window.location.pathname);
+      }
     }
 
-    // Sem e-mail na URL: já mostra a lista completa (comportamento not_found).
-    if (!email) {
+    function load() {
       renderLoading();
-      fetchResponsaveis('')
+      fetchResponsavel(email, cpf)
         .then(function (data) {
-          renderNotFound((data && data.responsaveis) || []);
+          cleanUrl();
+          var owners = (data && Array.isArray(data.owners)) ? data.owners : [];
+          if (!owners.length) {
+            renderError(load);
+            return;
+          }
+          if (data.found && data.assigned_owner) {
+            renderAssigned(data.assigned_owner, owners);
+          } else {
+            renderAllOwners(owners);
+          }
         })
         .catch(function () {
-          renderError();
+          cleanUrl();
+          renderError(load);
         });
-      return;
     }
 
-    renderLoading();
-    fetchResponsaveis(email)
-      .then(function (data) {
-        data = data || {};
-        var lista = data.responsaveis || [];
-        if (data.status === 'found') {
-          renderFound(lista);
-        } else {
-          renderNotFound(lista);
-        }
-      })
-      .catch(function () {
-        renderError();
-      });
+    load();
   }
 
-  run();
+  init();
 })();
