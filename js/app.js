@@ -9,6 +9,8 @@
 
   var TIMEOUT_MS = 8000;
   var GROUP_THRESHOLD = 8;
+  var CARD_MIN_WIDTH = 170; // precisa bater com minmax() em .people no CSS
+  var GRID_GAP = 18; // precisa bater com gap em .people no CSS
 
   var content = document.getElementById('content');
 
@@ -42,6 +44,26 @@
     return order.map(function (team) {
       return { team: team, owners: groups[team] };
     });
+  }
+
+  // Distribui os cards em linhas parelhas em vez de deixar uma última linha
+  // "órfã" com poucos itens (ex.: 6 itens em vez de virar 5+1, vira 3+3).
+  // Precisa rodar com o grid já inserido no DOM (e visível) para medir a
+  // largura real disponível.
+  function balanceGridColumns(grid) {
+    var n = grid.children.length;
+    if (n < 2) return;
+    var width = grid.getBoundingClientRect().width;
+    if (!width) return; // ainda não está visível (ex.: dentro de <details> fechado)
+    var maxCols = Math.max(1, Math.floor((width + GRID_GAP) / (CARD_MIN_WIDTH + GRID_GAP)));
+    if (maxCols <= 1) return; // tela estreita: mantém 1 coluna (padrão do CSS)
+    var rows = Math.ceil(n / maxCols);
+    var cols = Math.ceil(n / rows);
+    grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(' + CARD_MIN_WIDTH + 'px, 1fr))';
+  }
+
+  function balanceAllGrids() {
+    content.querySelectorAll('.people').forEach(balanceGridColumns);
   }
 
   // ---------- Renderização --------------------------------------------------
@@ -78,13 +100,6 @@
     name.className = 'person__name';
     name.textContent = owner.name || 'Sem nome';
     card.appendChild(name);
-
-    if (owner.team) {
-      var team = document.createElement('span');
-      team.className = 'owner-team';
-      team.textContent = owner.team;
-      card.appendChild(team);
-    }
 
     var buttonLabel = opts.highlight ? 'Agendar com ' + owner.name : 'Agendar';
 
@@ -152,6 +167,11 @@
       summary.textContent = 'Prefere outro horário? Ver outros responsáveis';
       details.appendChild(summary);
       details.appendChild(buildOwnersList(others));
+      // Enquanto fechado, os grids internos ficam sem largura mensurável —
+      // balanceia de novo assim que abrir.
+      details.addEventListener('toggle', function () {
+        if (details.open) balanceAllGrids();
+      });
       content.appendChild(details);
     }
   }
@@ -164,6 +184,7 @@
     msg.textContent = 'Escolha um responsável para agendar';
     content.appendChild(msg);
     content.appendChild(buildOwnersList(owners));
+    balanceAllGrids();
   }
 
   // Estado de erro com botão "Tentar de novo".

@@ -47,7 +47,7 @@ body {
 /* Cartão branco central --------------------------------------------------- */
 .card {
   width: 100%;
-  max-width: 720px;
+  max-width: min(1180px, 94vw);
   background: var(--card-bg);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -142,7 +142,7 @@ body {
 /* Grid de cards ----------------------------------------------------------- */
 .people {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 18px;
 }
 
@@ -197,19 +197,6 @@ body {
   padding: 26px 20px;
 }
 
-.owner-team {
-  display: inline-block;
-  margin: -8px 0 14px;
-  padding: 3px 12px;
-  border-radius: 999px;
-  background: #eef3f8;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
 /* "Ver outros responsáveis" (details/summary) ------------------------------ */
 .other-owners {
   margin-top: 4px;
@@ -244,9 +231,9 @@ body {
 
 /* Agrupamento por team (listas grandes) ------------------------------------ */
 .team-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 26px 40px;
 }
 
 .team-group__title {
@@ -326,6 +313,9 @@ summary:focus-visible {
     padding: 28px 20px;
   }
   .people {
+    grid-template-columns: 1fr;
+  }
+  .team-groups {
     grid-template-columns: 1fr;
   }
 }
