@@ -130,6 +130,15 @@ body {
   font-size: 0.95rem;
 }
 
+/* Mensagem de instrução (ex.: "Escolha um responsável para agendar") ------- */
+.content-message {
+  margin: 0 0 20px;
+  color: var(--navy);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* Grid de cards ----------------------------------------------------------- */
 .people {
   display: grid;
@@ -178,6 +187,77 @@ body {
   font-weight: 700;
 }
 
+/* Owner em destaque (assigned_owner) --------------------------------------- */
+.person--assigned {
+  max-width: 320px;
+  margin: 0 auto 22px;
+  background: #f3fafb;
+  border: 1px solid var(--teal);
+  box-shadow: 0 10px 24px rgba(21, 163, 181, 0.15);
+  padding: 26px 20px;
+}
+
+.owner-team {
+  display: inline-block;
+  margin: -8px 0 14px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* "Ver outros responsáveis" (details/summary) ------------------------------ */
+.other-owners {
+  margin-top: 4px;
+}
+
+.other-owners > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--teal);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 10px 0;
+  margin-bottom: 16px;
+}
+
+.other-owners > summary::-webkit-details-marker {
+  display: none;
+}
+
+.other-owners > summary::before {
+  content: "▸ ";
+}
+
+.other-owners[open] > summary::before {
+  content: "▾ ";
+}
+
+.other-owners > summary:hover {
+  color: var(--teal-hover);
+}
+
+/* Agrupamento por team (listas grandes) ------------------------------------ */
+.team-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.team-group__title {
+  margin: 0 0 14px;
+  color: var(--navy);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 /* Botão "Agendar" --------------------------------------------------------- */
 .btn {
   display: inline-block;
@@ -223,7 +303,8 @@ body {
 
 /* Foco visível de teclado ------------------------------------------------- */
 a:focus-visible,
-button:focus-visible {
+button:focus-visible,
+summary:focus-visible {
   outline: 3px solid var(--teal);
   outline-offset: 3px;
   border-radius: 6px;
